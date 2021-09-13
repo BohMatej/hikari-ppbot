@@ -1,4 +1,5 @@
 from dotenv import load_dotenv
+from random import choice
 import os
 import hikari
 
@@ -14,4 +15,6 @@ async def on_message(event: hikari.MessageCreateEvent) -> None:
         return
 
     if event.content == "!ping":
+        
         await event.message.respond(content = f"Pong! {bot.heartbeat_latency * 1_000:.0f}ms")
+        print(event.message)
