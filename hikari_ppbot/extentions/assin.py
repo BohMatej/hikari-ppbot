@@ -9,7 +9,7 @@ class Assin(lightbulb.Plugin):
         t = deadline_time
         d = re.split("[.-/]", d)
         print(d)
-        t = re.split("[.-/]", t)
+        t = re.split("[.-:;]", t)
         print(t)
         deadline_datetime = datetime.datetime(
             int(d[2]),
