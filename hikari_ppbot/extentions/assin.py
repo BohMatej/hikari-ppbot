@@ -1,4 +1,4 @@
-import lightbulb, re, datetime
+import lightbulb, datetime
 
 
 class Assin(lightbulb.Plugin):
@@ -43,7 +43,10 @@ class Assin(lightbulb.Plugin):
         print(deadline_datetime)
         # await ctx.respond(deadline_datetime.strftime("%A, %d. %B %Y %I:%M%p"))
         # await channel.send(deadline_datetime.strftime("%A, %d. %B %Y %I:%M%p"))
-        await channel.send(details)
+        asgmessage = await channel.send(details)
+        await asgmessage.add_reaction("testemoji", 906211448181624863)
+        await asgmessage.add_reaction("white_check_mark", 914981058074771467)
+        await asgmessage.add_reaction("x", 914981140899700758)
         # await ctx.respond(ctx.message.content)
 
 
