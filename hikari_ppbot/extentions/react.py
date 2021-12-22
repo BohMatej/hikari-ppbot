@@ -2,7 +2,7 @@ import datetime
 import hikari
 import lightbulb
 from lightbulb import plugins
-
+from apscheduler.triggers.cron import CronTrigger
 
 class React(lightbulb.Plugin):
     @lightbulb.command(name="react", help="sdfsdfzfdssdffsd")
@@ -25,22 +25,52 @@ class React(lightbulb.Plugin):
             await ctx.respond("User has DMs off.")
 
     @lightbulb.command(name="insert", help="inserts or sth")
-    async def insert(self, ctx, date: str):
-        date = datetime.datetime.strptime(date, "%d/%m/%Y")
+    async def insert(self, ctx, *, date: str):
+        date = datetime.datetime.strptime(date, "%d/%m/%Y %H:%M")
         print("yay")
         cur = await ctx.bot.db.execute(
-            "INSERT INTO assignment_list VALUES (?, ?, ?)", 
-            (ctx.channel_id, ctx.message.id, date.isoformat())
+            "INSERT INTO assignment_list "
+            "(ChannelID, MessageID, DueDate)"
+            "VALUES (?, ?, ?)", 
+            (ctx.channel_id, ctx.message.id, date.isoformat(" "))
         )
         print(cur.rowcount)
 
     @lightbulb.command(name="select", help="selects or sth")
     async def select(self, ctx):
         cur = await ctx.bot.db.execute(
-            "SELECT * FROM assignment_list WHERE DueDate < datetime('now', '+1 days') AND DueDate > datetime('now')"
+            "SELECT * "
+            "FROM assignment_list "
+            "WHERE DueDate < datetime('now', '+1 days')" 
+            "AND DueDate > datetime('now')"
         )
         results = await cur.fetchall()
         print(results)
+
+    async def scheduled_dms(self, bot):
+        cur = await bot.db.execute(
+            "SELECT * "
+            "FROM assignment_list "
+            "WHERE DueDate < datetime('now', '+1 days')" 
+            "AND DueDate > datetime('now', '+23 hours')"
+        )
+        results = await cur.fetchall()
+
+        for result in results:
+            if result[3] == 1:
+                return
+            
+            embed = (
+                hikari.Embed(
+                    title = "Assignment Reminder", 
+                    description = "fsaddfsasfdfsdfsd",
+                    colour = 0xFF0000,
+                )
+                .add_field("Due date: ", result[2])
+            )
+            user = await bot.rest.fetch_user(341218733546668033)
+            await user.send(embed)
+
 
     #@plugins.listener()
     #async def on_command_error(se)
@@ -57,7 +87,13 @@ class Scheduletask(lightbulb.Plugin):
 
 
 def load(bot):
-    bot.add_plugin(React())
+    r = React()
+    bot.add_plugin(r)
+    bot.scheduler.add_job(
+        r.scheduled_dms, 
+        CronTrigger(second=30),
+        args = [bot])
+    
 
 
 

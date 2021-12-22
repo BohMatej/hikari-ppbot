@@ -14,10 +14,9 @@ with open("./secrets/token") as f:
     token = f.read().strip()
 
 bot = lightbulb.Bot(token=token, prefix="!", intents=hikari.Intents.ALL)
-bot.load_extensions_from("./hikari_ppbot/extentions")
-
 bot.scheduler = AsyncIOScheduler()
 bot.scheduler.configure(timezone=utc)
+bot.load_extensions_from("./hikari_ppbot/extentions")
 
 
 
