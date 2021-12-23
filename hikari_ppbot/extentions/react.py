@@ -52,9 +52,10 @@ class React(lightbulb.Plugin):
             "SELECT * "
             "FROM assignment_list "
             "WHERE DueDate < datetime('now', '+1 days')" 
-            "AND DueDate > datetime('now', '+23 hours')"
+             "AND DueDate > datetime('now')"
         )
         results = await cur.fetchall()
+        print(results)
 
         for result in results:
             if result[3] == 1:
