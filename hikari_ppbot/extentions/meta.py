@@ -1,4 +1,4 @@
-import lightbulb
+import hikari, lightbulb
 
 
 class Meta(lightbulb.Plugin):
@@ -10,7 +10,10 @@ class Meta(lightbulb.Plugin):
     # await ctx.message.add_reaction(":testemoji:")
     # channel = await ctx.bot.rest.fetch_channel(882583345802907708)
     # await channel.send("Pong!")
-    
+        #syschannel = hikari.api.rest.RESTClient.fetch_guild(ctx.message.guild_id)
+        syschannel = await ctx.bot.rest.fetch_channel(await ctx.bot.rest.fetch_guild(ctx.message.guild_id))
+        msg = await syschannel.send("aaaaaaaaaaa")
+        await msg.add_reaction("testemoji", 906211448181624863)
     
 
 

@@ -30,11 +30,21 @@ class React(lightbulb.Plugin):
         print("yay")
         cur = await ctx.bot.db.execute(
             "INSERT INTO assignment_list "
-            "(ChannelID, MessageID, DueDate)"
-            "VALUES (?, ?, ?)", 
-            (ctx.channel_id, ctx.message.id, date.isoformat(" "))
+            "VALUES (?, ?, ?, ?, ?, ?)", 
+            (
+                ctx.guild_id,
+                ctx.channel_id, 
+                ctx.message.id,
+                ctx.message.content,
+                date.isoformat(" "),
+                0,
+            )
         )
         print(cur.rowcount)
+        
+        # cur = await ctx.bot.db.execute("SELECT mon FROM channel_list WHERE guildID = ?", (ctx.guild_id,))
+        # channel = await ctx.bot.rest.fetch_channel(await cur.fetchone()) or ctx.get_guild().system_channel_id
+        # await channel.send("aaaaaaaaaaa")
 
     @lightbulb.command(name="select", help="selects or sth")
     async def select(self, ctx):
@@ -45,14 +55,21 @@ class React(lightbulb.Plugin):
             "AND DueDate > datetime('now')"
         )
         results = await cur.fetchall()
+
+
+
+
         print(results)
 
     async def scheduled_dms(self, bot):
         cur = await bot.db.execute(
-            "SELECT * "
-            "FROM assignment_list "
-            "WHERE DueDate < datetime('now', '+1 days')" 
-             "AND DueDate > datetime('now')"
+            # "SELECT * "
+            # "FROM assignment_list "
+            # "WHERE DueDate < datetime('now', '+1 days')" 
+            #  "AND DueDate > datetime('now')"
+            "SELECT a.channelID, a.messageID, a.DueDate, a.Notified, a.details, e.incompleteSnow "
+            "FROM assignment_list a " 
+            "INNER JOIN emoji_list e USING (guildID) "
         )
         results = await cur.fetchall()
         print(results)
@@ -69,6 +86,7 @@ class React(lightbulb.Plugin):
                 )
                 .add_field("Due date: ", result[2])
             )
+            #for users in bot.rest.fetch_reactions_for_emoji(results[1], results[2], ):
             user = await bot.rest.fetch_user(341218733546668033)
             await user.send(embed)
 

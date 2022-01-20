@@ -5,7 +5,7 @@ import lightbulb, datetime
 
 class Assin(lightbulb.Plugin):
     @lightbulb.command(name="assign", help="sdfsdfzfdssdffsd")
-    async def assin(self, ctx, *, details: str): #split command up to simplify?
+    async def assin(self, ctx, *, details: str):
         print (details)
         arguments = details.split(",")
         print(arguments)
@@ -106,6 +106,13 @@ class Assin(lightbulb.Plugin):
             int(arg_time[1]),
         )
 
+        syschannel = await ctx.bot.rest.fetch_channel(await ctx.bot.rest.fetch_guild(ctx.message.guild_id))
+        # cur = await ctx.bot.db.execute(
+        #     "SELECT * FROM channel_list "
+        #     "WHERE guildID = "
+            
+        # )
+
         weekday_channels = [
             882583345802907708,
             882583367193878579,
@@ -134,6 +141,38 @@ class Assin(lightbulb.Plugin):
         # asgmessage = await channel.send(arg_details)
         # await asgmessage.add_reaction("testemoji", 906211448181624863)
 
+    @lightbulb.command(name="setemoji", help="sets an emoji that the bot will use to determine users who finished / haven't finished assignments. Type !help for more.")
+    async def setemoji(self, ctx, *, details: str):
+        arguments = details.split(",")
+
+        g = ctx.message.guild_id
+        emojitype = arguments[0].strip()
+        emojiname = arguments[1].strip()
+        emojisnow = arguments[2].strip()
+
+        if emojitype == "complete":
+            await ctx.bot.db.execute(
+                "UPDATE emoji_list SET completeName=?, completeSnow=? WHERE guildID = ?",
+                (emojiname, emojisnow, g)
+            ) # better way to write this command?
+        elif emojitype == "incomplete":
+            await ctx.bot.db.execute(
+                "UPDATE emoji_list SET incompleteName=?, incompleteSnow=? WHERE guildID = ?",
+                (emojiname, emojisnow, g)
+            ) # better way to write this command?
+
+    @lightbulb.command(name="setchannel", help="sets a channel that the bot will message assignments into for a specific weekday. Type !help for more.")
+    async def setchannel(self, ctx, *, details: str):
+        arguments = details.split(",")
+
+        g = ctx.message.guild_id
+        day = arguments[0].strip()
+        channelID = arguments[1].strip()
+        cur = await ctx.bot.db.execute(
+            f"UPDATE channel_list SET {day}=? WHERE guildID = ?",
+            (channelID, g)
+        ) # better way to write this command?
+    
 
 
 

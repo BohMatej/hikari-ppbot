@@ -38,8 +38,39 @@ async def on_stopping(event):
 @bot.listen(hikari.StartedEvent)
 async def on_started(event):
     bot.scheduler.start()
+    guilds = await bot.rest.fetch_my_guilds()
+    await bot.db.executemany(
+        "INSERT INTO guild_list VALUES (?) ON CONFLICT DO NOTHING", 
+        ([g.id for g in guilds],)
+    )
+    await bot.db.executemany(
+        "INSERT INTO channel_list (guildID) VALUES (?) ON CONFLICT DO NOTHING", 
+        ([g.id for g in guilds],)
+    )
+    await bot.db.executemany(
+        "INSERT INTO emoji_list (guildID) VALUES (?) ON CONFLICT DO NOTHING", 
+        ([g.id for g in guilds],)
+    )
+    await bot.db.commit()
     print("ready :)")
 
+@bot.listen(hikari.GuildJoinEvent)
+async def on_guild_join(event):
+    guilds = await bot.rest.fetch_my_guilds()
+    await bot.db.executemany(
+        "INSERT INTO guild_list VALUES (?) ON CONFLICT DO NOTHING", 
+        ([g.id for g in guilds],)
+    )
+    await bot.db.executemany(
+        "INSERT INTO channel_list (guildID) VALUES (?) ON CONFLICT DO NOTHING", 
+        ([g.id for g in guilds],)
+    )
+    await bot.db.executemany(
+        "INSERT INTO emoji_list (guildID) VALUES (?) ON CONFLICT DO NOTHING", 
+        ([g.id for g in guilds],)
+    )
+    await bot.db.commit()
+    print("New Server Joined :)")
 
 @bot.listen(lightbulb.CommandErrorEvent)
 async def commadn_error_failure(event):
