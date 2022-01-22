@@ -6,9 +6,9 @@ import lightbulb, datetime
 class Assin(lightbulb.Plugin):
     @lightbulb.command(name="assign", help="sdfsdfzfdssdffsd")
     async def assin(self, ctx, *, details: str):
-        print (details)
+        # print (details)
         arguments = details.split(",")
-        print(arguments)
+        # print(arguments)
 
         time_startswith = [
             "t=",
@@ -63,10 +63,13 @@ class Assin(lightbulb.Plugin):
             arg_date = arg_date.replace("next", "").strip()
         for i in range(7):
             if arg_date == weekday_list[i]:
-                wd_add += (i - datetime.date.today().weekday())
-                if wd_add == 7: wd_add = 14
-                if wd_add == 0: wd_add = 7
-                d = datetime.date.today() + datetime.timedelta(days=wd_add)
+                daydelta = (i - datetime.date.today().weekday())
+                if daydelta <= 0:
+                    daydelta += 7
+                #if wd_add == 7: wd_add = 14
+                #if wd_add == 0: wd_add = 7
+                print(wd_add)
+                d = datetime.date.today() + datetime.timedelta(days=(wd_add+daydelta))
                 arg_date = d.strftime("%d.%m.%Y")
 
         if arg_time == "": # set a default time argument
@@ -85,8 +88,8 @@ class Assin(lightbulb.Plugin):
             arg_time = arg_time.replace(splitter, "-")
         arg_time = arg_time.split("-")
         
-        print(arg_date)
-        print(arg_time)
+        # print(arg_date)
+        # print(arg_time)
 
         for check in arg_date:
             if check.isdigit() == False:
@@ -107,24 +110,30 @@ class Assin(lightbulb.Plugin):
         )
 
         syschannel = await ctx.bot.rest.fetch_channel(await ctx.bot.rest.fetch_guild(ctx.message.guild_id))
-        # cur = await ctx.bot.db.execute(
-        #     "SELECT * FROM channel_list "
-        #     "WHERE guildID = "
-            
-        # )
+        cur = await ctx.bot.db.execute(
+            "SELECT * FROM channel_list "
+            "WHERE guildID = ?",
+            (ctx.message.guild_id,)
+        )
+        weekday_channels_raw = await cur.fetchall()
+        #print(weekday_channels_raw)
+        
+        weekday_channels = []
+        for val in weekday_channels_raw[0]:
+            try:
+                weekday_channels.append(int(val))
+            except TypeError:
+                weekday_channels.append(syschannel.id)
 
-        weekday_channels = [
-            882583345802907708,
-            882583367193878579,
-            882583386416349204,
-            913527188035350528,
-            913527232029392966,
-            913528417603960893,
-            914979194813972530
-        ]
+        channel = await ctx.bot.rest.fetch_channel(weekday_channels[deadline_datetime.weekday()+1])
 
-        channel = await ctx.bot.rest.fetch_channel(weekday_channels[deadline_datetime.weekday()])
-        print(deadline_datetime)
+        cur = await ctx.bot.db.execute(
+            "SELECT * FROM emoji_list "
+            "WHERE guildID = ?",
+            (ctx.message.guild_id,)
+        )
+        emoji_raw = await cur.fetchall()
+        #print(emoji_raw)
 
         embed = (
             hikari.Embed(
@@ -136,10 +145,32 @@ class Assin(lightbulb.Plugin):
         )
 
         asgembed = await channel.send(embed)
-        await asgembed.add_reaction("testemoji", 906211448181624863)
+        
+        try:
+            await asgembed.add_reaction(emoji_raw[0][1], int(emoji_raw[0][2]))
+        except TypeError:
+            await asgembed.add_reaction("✅")
+
+        try:
+            await asgembed.add_reaction(emoji_raw[0][3], int(emoji_raw[0][4]))
+        except TypeError:
+            await asgembed.add_reaction("❌")
 
         # asgmessage = await channel.send(arg_details)
         # await asgmessage.add_reaction("testemoji", 906211448181624863)
+        
+        await ctx.bot.db.execute(
+            "INSERT INTO assignment_list "
+            "VALUES (?, ?, ?, ?, ?, ?)", 
+            (
+                ctx.guild_id,
+                weekday_channels[deadline_datetime.weekday()+1], 
+                asgembed.id,
+                arg_details,
+                deadline_datetime.isoformat(" "),
+                0,
+            )
+        )
 
     @lightbulb.command(name="setemoji", help="sets an emoji that the bot will use to determine users who finished / haven't finished assignments. Type !help for more.")
     async def setemoji(self, ctx, *, details: str):

@@ -1,8 +1,10 @@
 import datetime
+from email import message
 import hikari
 import lightbulb
 from lightbulb import plugins
 from apscheduler.triggers.cron import CronTrigger
+from matplotlib.style import use
 
 class React(lightbulb.Plugin):
     @lightbulb.command(name="react", help="sdfsdfzfdssdffsd")
@@ -63,21 +65,18 @@ class React(lightbulb.Plugin):
 
     async def scheduled_dms(self, bot):
         cur = await bot.db.execute(
-            # "SELECT * "
-            # "FROM assignment_list "
-            # "WHERE DueDate < datetime('now', '+1 days')" 
-            #  "AND DueDate > datetime('now')"
-            "SELECT a.channelID, a.messageID, a.DueDate, a.Notified, a.details, e.incompleteSnow "
+            "SELECT a.channelID, a.messageID, a.DueDate, a.Notified, a.details, e.completeName, e.completeSnow "
             "FROM assignment_list a " 
             "INNER JOIN emoji_list e USING (guildID) "
+            "WHERE a.DueDate < datetime('now', '+1 days') " 
+            "AND a.DueDate > datetime('now') "
+            "AND a.Notified = 0"
         )
         results = await cur.fetchall()
         print(results)
 
-        for result in results:
-            if result[3] == 1:
-                return
-            
+        for result in results: 
+
             embed = (
                 hikari.Embed(
                     title = "Assignment Reminder", 
@@ -87,8 +86,25 @@ class React(lightbulb.Plugin):
                 .add_field("Due date: ", result[2])
             )
             #for users in bot.rest.fetch_reactions_for_emoji(results[1], results[2], ):
-            user = await bot.rest.fetch_user(341218733546668033)
-            await user.send(embed)
+
+            # channel = bot.cache.get_guild_channel(result[0])
+            # message = await channel.fetch_message(result[1])
+
+
+            async for user in bot.rest.fetch_reactions_for_emoji(result[0], result[1], result[5], result[6]):
+                if user.is_bot:
+                    continue
+
+                await user.send(embed)
+
+            # for reaction in message.reactions:
+            #     if reaction.user.is_bot:
+            #         continue
+                
+            #     await reaction.user.send(embed)
+
+            # user = await bot.rest.fetch_user(341218733546668033)
+            # await user.send(embed)
 
 
     #@plugins.listener()
@@ -108,10 +124,7 @@ class Scheduletask(lightbulb.Plugin):
 def load(bot):
     r = React()
     bot.add_plugin(r)
-    bot.scheduler.add_job(
-        r.scheduled_dms, 
-        CronTrigger(second=30),
-        args = [bot])
+    bot.scheduler.add_job(r.scheduled_dms, CronTrigger(second="0,30"), args = [bot])
     
 
 

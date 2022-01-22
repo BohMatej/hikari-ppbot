@@ -14,6 +14,7 @@ class Meta(lightbulb.Plugin):
         syschannel = await ctx.bot.rest.fetch_channel(await ctx.bot.rest.fetch_guild(ctx.message.guild_id))
         msg = await syschannel.send("aaaaaaaaaaa")
         await msg.add_reaction("testemoji", 906211448181624863)
+        await msg.add_reaction("✅")
     
 
 
