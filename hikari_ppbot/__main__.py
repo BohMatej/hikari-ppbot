@@ -10,6 +10,9 @@ from pytz import timezone, utc
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
+#fddfdfdfdfdfdfd
+#comment shit
+
 
 with open("./secrets/token") as f:
     token = f.read().strip()
