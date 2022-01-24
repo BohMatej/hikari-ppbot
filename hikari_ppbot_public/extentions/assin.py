@@ -1,6 +1,9 @@
 # from hikari import undefined
+from email import header
 import hikari
 import lightbulb, datetime
+
+from matplotlib.image import thumbnail
 
 
 class Assin(lightbulb.Plugin):
@@ -21,8 +24,42 @@ class Assin(lightbulb.Plugin):
             "Time ="
         ]
 
+        atype_startswith = [
+            "assignment type=",
+            "Assignment type=",
+            "assignment type =",
+            "Assignment type =",
+            "atype=",
+            "Atype=",
+            "atype =",
+            "Atype =",
+            "a=",
+            "A =",
+            "a =",
+            "A=",
+            "at=",
+            "At=",
+            "at =",
+            "At =",
+            "AT=",
+            "AT =",
+        ]
+
+        head_startswith = [
+            "h=",
+            "h =",
+            "H=",
+            "H =",
+            "head=",
+            "head =",
+            "Head=",
+            "Head ="
+        ]
+
         arg_date = ""
         arg_time = ""
+        arg_atype = ""
+        arg_head = ""
         arg_details = ""
         cont_to_details = False # checked to determine whether the rest of the args are details
 
@@ -36,8 +73,23 @@ class Assin(lightbulb.Plugin):
                 continue
 
             for ts in time_startswith: # find time argument
-                if arguments[i].startswith(ts) and arg_time == "":
+                arglowered = arguments[i].lower()
+                if arglowered.startswith(ts) and arg_time == "":
                     arg_time = arguments[i].replace(ts, "").strip()
+                    cont_to_details = False
+                    break
+            
+            for ats in atype_startswith: # find assignment type argument
+                arglowered = arguments[i].lower()
+                if arglowered.startswith(ats) and arg_atype == "":
+                    arg_atype = arguments[i].replace(ats, "").strip()
+                    cont_to_details = False
+                    break
+            
+            for hs in head_startswith: # find assignment type argument
+                arglowered = arguments[i].lower()
+                if arglowered.startswith(hs) and arg_head == "":
+                    arg_head = arguments[i].replace(hs, "").strip()
                     cont_to_details = False
                     break
 
@@ -45,6 +97,8 @@ class Assin(lightbulb.Plugin):
                 for j in range(i, len(arguments)):
                     arg_details += arguments[j]
                 break
+        
+        #############setup day
 
         if arg_date == "today":
             print("im here")
@@ -72,6 +126,8 @@ class Assin(lightbulb.Plugin):
                 d = datetime.date.today() + datetime.timedelta(days=(wd_add+daydelta))
                 arg_date = d.strftime("%d.%m.%Y")
 
+        #############setup time
+
         if arg_time == "": # set a default time argument
             arg_time = "23:59"
 
@@ -87,9 +143,6 @@ class Assin(lightbulb.Plugin):
         for splitter in t_splitters:
             arg_time = arg_time.replace(splitter, "-")
         arg_time = arg_time.split("-")
-        
-        # print(arg_date)
-        # print(arg_time)
 
         for check in arg_date:
             if check.isdigit() == False:
@@ -100,7 +153,6 @@ class Assin(lightbulb.Plugin):
                 await ctx.respond("Invalid time input!")
                 return
 
-
         deadline_datetime = datetime.datetime(
             int(arg_date[2]),
             int(arg_date[1]),
@@ -109,7 +161,40 @@ class Assin(lightbulb.Plugin):
             int(arg_time[1]),
         )
 
-        syschannel = await ctx.bot.rest.fetch_channel(await ctx.bot.rest.fetch_guild(ctx.message.guild_id))
+        #############setup atype and color
+        arg_atype = arg_atype.lower().strip()
+        if arg_atype == "homework" or arg_atype == "h":
+            url = "https://i.imgur.com/1c0WaqC.png"
+            col = 0x1c8adb
+        elif arg_atype == "reminder" or arg_atype == "r":
+            url = "https://i.imgur.com/H9CqPo3.png"
+            col = 0xfecc4e
+        elif arg_atype == "project" or arg_atype == "p":
+            url = "https://i.imgur.com/bi8a7CR.png"
+            col = 0x7030a1
+        elif arg_atype == "test" or arg_atype == "t":
+            url = "https://i.imgur.com/y4GMZvW.png"
+            col = 0x40b7ad
+        elif arg_atype == "":
+            col = 0x000000
+        else:
+            msg = (
+            "Invalid assignment type input! "
+            "Valid types are \"homework\", \"reminder\", \"project\", \"test\", "
+            "or their single character equivalents \"h\", \"r\", \"p\", and \"t\"."
+            )
+            await ctx.respond(msg)
+            return
+
+        #############setup heading and color
+
+
+        if arg_head == "":
+            arg_head = "Assignment"
+
+        #############setup channel
+
+        defchannel = await ctx.bot.rest.fetch_channel(ctx.message.channel_id)
         cur = await ctx.bot.db.execute(
             "SELECT * FROM channel_list "
             "WHERE guildID = ?",
@@ -123,7 +208,7 @@ class Assin(lightbulb.Plugin):
             try:
                 weekday_channels.append(int(val))
             except TypeError:
-                weekday_channels.append(syschannel.id)
+                weekday_channels.append(defchannel.id)
 
         channel = await ctx.bot.rest.fetch_channel(weekday_channels[deadline_datetime.weekday()+1])
 
@@ -133,16 +218,18 @@ class Assin(lightbulb.Plugin):
             (ctx.message.guild_id,)
         )
         emoji_raw = await cur.fetchall()
-        #print(emoji_raw)
+        print(arg_head)
 
         embed = (
             hikari.Embed(
-                title = "Assignment Reminder", 
+                title = arg_head, 
                 description = arg_details,
-                colour = 0xFF0000,
+                colour = col,
             )
             .add_field("Due date: ", deadline_datetime.strftime("%d.%m.%Y %H:%M"))
         )
+        if arg_atype != "":
+            embed.set_thumbnail(url)
 
         asgembed = await channel.send(embed)
         
@@ -178,31 +265,51 @@ class Assin(lightbulb.Plugin):
 
         g = ctx.message.guild_id
         emojitype = arguments[0].strip()
-        emojiname = arguments[1].strip()
-        emojisnow = arguments[2].strip()
+        emojisnow = arguments[1].strip()
 
-        if emojitype == "complete":
-            await ctx.bot.db.execute(
-                "UPDATE emoji_list SET completeName=?, completeSnow=? WHERE guildID = ?",
-                (emojiname, emojisnow, g)
-            ) # better way to write this command?
-        elif emojitype == "incomplete":
-            await ctx.bot.db.execute(
-                "UPDATE emoji_list SET incompleteName=?, incompleteSnow=? WHERE guildID = ?",
-                (emojiname, emojisnow, g)
-            ) # better way to write this command?
+        if emojisnow == "default":
+            if emojitype == "complete":
+                await ctx.bot.db.execute(
+                    "UPDATE emoji_list SET completeName=?, completeSnow=? WHERE guildID = ?",
+                    (None, None, g)
+                ) # better way to write this command?
+            elif emojitype == "incomplete":
+                await ctx.bot.db.execute(
+                    "UPDATE emoji_list SET incompleteName=?, incompleteSnow=? WHERE guildID = ?",
+                    (None, None, g)
+                ) # better way to write this command?
+            else:
+                ctx.message.respond("Set a valid emoji type: \"complete\" or \"incomplete\"")
+        else:
+            emojiname = arguments[2].strip()
+            
+            if emojitype == "complete":
+                await ctx.bot.db.execute(
+                    "UPDATE emoji_list SET completeName=?, completeSnow=? WHERE guildID = ?",
+                    (emojiname, emojisnow, g)
+                ) # better way to write this command?
+            elif emojitype == "incomplete":
+                await ctx.bot.db.execute(
+                    "UPDATE emoji_list SET incompleteName=?, incompleteSnow=? WHERE guildID = ?",
+                    (emojiname, emojisnow, g)
+                ) # better way to write this command?
+            else:
+                ctx.message.respond("Set a valid emoji type: \"complete\" or \"incomplete\"")
+        await ctx.bot.db.commit()
 
     @lightbulb.command(name="setchannel", help="sets a channel that the bot will message assignments into for a specific weekday. Type !help for more.")
     async def setchannel(self, ctx, *, details: str):
         arguments = details.split(",")
 
         g = ctx.message.guild_id
-        day = arguments[0].strip()
-        channelID = arguments[1].strip()
+        day = arguments[0].lower().strip()
+        channelID = arguments[1].lower().strip()
         cur = await ctx.bot.db.execute(
             f"UPDATE channel_list SET {day}=? WHERE guildID = ?",
             (channelID, g)
         ) # better way to write this command?
+        await ctx.bot.db.commit()
+    
     
 
 

@@ -29,7 +29,7 @@ async def on_starting(event):
     bot.db = await aiosqlite.connect("data/database.sqlite3")
     with open("data/build.sql") as f:
         await bot.db.executescript(f.read())
-    bot.scheduler.add_job(bot.db.commit, CronTrigger(second=0))
+    #bot.scheduler.add_job(bot.db.commit, CronTrigger(second=0))
 
 
 @bot.listen(hikari.StoppingEvent)
@@ -38,26 +38,26 @@ async def on_stopping(event):
     await bot.db.close()
     bot.scheduler.shutdown()
 
-@bot.listen(hikari.GuildReactionAddEvent)
-async def on_reaction_switch(event:hikari.GuildReactionAddEvent):
-    cur = await event.app.db.execute(
-        "SELECT e.incompleteName, e.incompleteSnow, e.completeName, e.completeSnow "
-        "FROM emoji_list e "
-        "INNER JOIN assignment_list a USING (guildID) "
-        "WHERE a.messageID = ?",
-        (event.message_id,)         
-    )
-    if not (result := await cur.fetchone()):
-        return
+# @bot.listen(hikari.GuildReactionAddEvent)
+# async def on_reaction_switch(event:hikari.GuildReactionAddEvent):
+#     cur = await event.app.db.execute(
+#         "SELECT e.incompleteName, e.incompleteSnow, e.completeName, e.completeSnow "
+#         "FROM emoji_list e "
+#         "INNER JOIN assignment_list a USING (guildID) "
+#         "WHERE a.messageID = ?",
+#         (event.message_id,)         
+#     )
+#     if not (result := await cur.fetchone()):
+#         return
     
-    message = await event.app.rest.fetch_message(event.channel_id, event.message_id)
-    print(event.emoji_id)
-    print(result[1])
-    print(result[3])
-    if event.emoji_id == result[1]:
-        await message.remove_reaction(result[2], int(result[3]), user=event.user_id)
-    elif event.emoji_id == result[3]:
-        await message.remove_reaction(result[0], int(result[1]), user=event.user_id)
+#     message = await event.app.rest.fetch_message(event.channel_id, event.message_id)
+#     print(event.emoji_id)
+#     print(result[1])
+#     print(result[3])
+#     if event.emoji_id == result[1]:
+#         await message.remove_reaction(result[2], int(result[3]), user=event.user_id)
+#     elif event.emoji_id == result[3]:
+#         await message.remove_reaction(result[0], int(result[1]), user=event.user_id)
 
 @bot.listen(hikari.StartedEvent)
 async def on_started(event):
@@ -101,6 +101,14 @@ async def on_guild_join(event):
 
     await bot.db.commit()
     print("New Server Joined :)")
+
+@bot.listen(hikari.GuildLeaveEvent)
+async def on_guild_leave(event):
+    print(event.guild_id)
+    await bot.db.execute("DELETE FROM guild_list WHERE guildID = ?", (event.guild_id,))
+    await bot.db.execute("DELETE FROM channel_list WHERE guildID = ?", (event.guild_id,))
+    await bot.db.execute("DELETE FROM emoji_list WHERE guildID = ?", (event.guild_id,))
+    await bot.db.execute("DELETE FROM assignment_list WHERE guildID = ?", (event.guild_id,))
 
 @bot.listen(lightbulb.CommandErrorEvent)
 async def commadn_error_failure(event):

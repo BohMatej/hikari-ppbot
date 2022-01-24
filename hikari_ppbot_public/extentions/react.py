@@ -1,3 +1,4 @@
+from asyncio.windows_events import NULL
 import datetime
 from email import message
 import hikari
@@ -65,7 +66,7 @@ class React(lightbulb.Plugin):
 
     async def scheduled_dms(self, bot):
         cur = await bot.db.execute(
-            "SELECT a.channelID, a.messageID, a.DueDate, a.Notified, a.details, e.completeName, e.completeSnow "
+            "SELECT a.channelID, a.messageID, a.DueDate, a.Notified, a.details, e.incompleteName, e.incompleteSnow "
             "FROM assignment_list a " 
             "INNER JOIN emoji_list e USING (guildID) "
             "WHERE a.DueDate < datetime('now', '+1 days') " 
@@ -76,7 +77,7 @@ class React(lightbulb.Plugin):
         print(results)
 
         for result in results: 
-
+            await bot.db.execute("UPDATE assignment_list SET Notified = 1 WHERE messageID = ?", (result[1],))
             embed = (
                 hikari.Embed(
                     title = "Assignment Reminder", 
@@ -90,21 +91,38 @@ class React(lightbulb.Plugin):
             # channel = bot.cache.get_guild_channel(result[0])
             # message = await channel.fetch_message(result[1])
 
+            if result[5] == None:
+                async for user in bot.rest.fetch_reactions_for_emoji(result[0], result[1], "❌"):
+                    if user.is_bot:
+                        continue
+                    print("None")
+                    await user.send(embed)
 
-            async for user in bot.rest.fetch_reactions_for_emoji(result[0], result[1], result[5], result[6]):
-                if user.is_bot:
-                    continue
+            else: 
+                async for user in bot.rest.fetch_reactions_for_emoji(result[0], result[1], result[5], result[6]):
+                    if user.is_bot:
+                        continue
+                    print("Not none")
+                    await user.send(embed)
+        await bot.db.commit()
+    async def scheduled_datadelete(self, bot):
+        cur = await bot.db.execute(
+            "SELECT ChannelID, MessageID "
+            "FROM assignment_list "
+            "WHERE DueDate < datetime('now')" 
+        )
+        results = await cur.fetchall()
+        print(results)
 
-                await user.send(embed)
 
-            # for reaction in message.reactions:
-            #     if reaction.user.is_bot:
-            #         continue
-                
-            #     await reaction.user.send(embed)
+        for result in results:
+            await bot.rest.delete_message(result[0], result[1])
 
-            # user = await bot.rest.fetch_user(341218733546668033)
-            # await user.send(embed)
+        await bot.db.execute(
+            "DELETE FROM assignment_list "
+            "WHERE DueDate < datetime('now')" 
+        )
+
 
 
     #@plugins.listener()
@@ -125,6 +143,7 @@ def load(bot):
     r = React()
     bot.add_plugin(r)
     bot.scheduler.add_job(r.scheduled_dms, CronTrigger(second="0,30"), args = [bot])
+    bot.scheduler.add_job(r.scheduled_datadelete, CronTrigger(second="15,45"), args = [bot])
     
 
 
