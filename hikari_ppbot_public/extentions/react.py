@@ -63,14 +63,13 @@ class React(lightbulb.Plugin):
 
 
         print(results)
-
     async def scheduled_dms(self, bot):
         cur = await bot.db.execute(
             "SELECT a.channelID, a.messageID, a.DueDate, a.Notified, a.details, e.incompleteName, e.incompleteSnow "
             "FROM assignment_list a " 
             "INNER JOIN emoji_list e USING (guildID) "
-            "WHERE a.DueDate < datetime('now', '+1 days') " 
-            "AND a.DueDate > datetime('now') "
+            "WHERE a.DueDate < datetime('now', '+1 days', 'localtime') " 
+            "AND a.DueDate > datetime('now', 'localtime') "
             "AND a.Notified = 0"
         )
         results = await cur.fetchall()
@@ -109,19 +108,23 @@ class React(lightbulb.Plugin):
         cur = await bot.db.execute(
             "SELECT ChannelID, MessageID "
             "FROM assignment_list "
-            "WHERE DueDate < datetime('now')" 
+            "WHERE DueDate < datetime('now', 'localtime')" 
         )
         results = await cur.fetchall()
         print(results)
 
-
-        for result in results:
-            await bot.rest.delete_message(result[0], result[1])
-
         await bot.db.execute(
             "DELETE FROM assignment_list "
-            "WHERE DueDate < datetime('now')" 
+            "WHERE DueDate < datetime('now', 'localtime')" 
         )
+
+        for result in results:
+            try:
+                await bot.rest.delete_message(result[0], result[1])
+            except:
+                pass
+
+        
 
 
 
