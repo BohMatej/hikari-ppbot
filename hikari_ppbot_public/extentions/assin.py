@@ -1,4 +1,4 @@
-# from hikari import undefined
+from ast import arguments
 from email import header
 import hikari
 import lightbulb, datetime
@@ -98,7 +98,7 @@ class Assin(lightbulb.Plugin):
                     arg_details += arguments[j]
                 break
         
-        #############setup day
+        #############setup date
 
         if arg_date == "today":
             print("im here")
@@ -126,14 +126,10 @@ class Assin(lightbulb.Plugin):
                 d = datetime.date.today() + datetime.timedelta(days=(wd_add+daydelta))
                 arg_date = d.strftime("%d.%m.%Y")
 
-        #############setup time
+        #############setup time and datetime
 
         if arg_time == "": # set a default time argument
             arg_time = "23:59"
-
-        print(f"date: {arg_date}")
-        print(f"time: {arg_time}")
-        print(f"details: {arg_details}")
 
         d_splitters = [".", "-", "/", ","]
         t_splitters = [".", "-", ":", ",", ";"]
@@ -259,9 +255,12 @@ class Assin(lightbulb.Plugin):
             )
         )
 
+    
+
+
     @lightbulb.command(name="setemoji", help="sets an emoji that the bot will use to determine users who finished / haven't finished assignments. Type !help for more.")
-    async def setemoji(self, ctx, *, details: str):
-        arguments = details.split(",")
+    async def setemoji(self, ctx, *, args: str):
+        arguments = args.split(",")
 
         g = ctx.message.guild_id
         emojitype = arguments[0].strip()
@@ -298,8 +297,8 @@ class Assin(lightbulb.Plugin):
         await ctx.bot.db.commit()
 
     @lightbulb.command(name="setchannel", help="sets a channel that the bot will message assignments into for a specific weekday. Type !help for more.")
-    async def setchannel(self, ctx, *, details: str):
-        arguments = details.split(",")
+    async def setchannel(self, ctx, *, args: str):
+        arguments = args.split(",")
 
         g = ctx.message.guild_id
         day = arguments[0].lower().strip()
