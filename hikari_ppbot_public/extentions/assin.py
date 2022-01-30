@@ -254,6 +254,10 @@ class Assin(lightbulb.Plugin):
                 0,
             )
         )
+        await ctx.bot.db.commit()
+        #delete user's message
+        await ctx.bot.rest.delete_message(ctx.message.channel_id, ctx.message)
+
 
     
 
@@ -295,6 +299,8 @@ class Assin(lightbulb.Plugin):
             else:
                 ctx.message.respond("Set a valid emoji type: \"complete\" or \"incomplete\"")
         await ctx.bot.db.commit()
+        #delete user's message
+        await ctx.bot.rest.delete_message(ctx.message.channel_id, ctx.message)
 
     @lightbulb.command(name="setchannel", help="sets a channel that the bot will message assignments into for a specific weekday. Type !help for more.")
     async def setchannel(self, ctx, *, args: str):
@@ -308,7 +314,8 @@ class Assin(lightbulb.Plugin):
             (channelID, g)
         ) # better way to write this command?
         await ctx.bot.db.commit()
-    
+        #delete user's message
+        await ctx.bot.rest.delete_message(ctx.message.channel_id, ctx.message)
     
 
 

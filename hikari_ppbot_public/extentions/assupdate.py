@@ -68,7 +68,7 @@ class Assupdate(lightbulb.Plugin):
         ]
 
         arg_messageid = ""
-        arg_date = None
+        arg_date = ""
         arg_time = ""
         arg_atype = ""
         arg_head = ""
@@ -122,16 +122,18 @@ class Assupdate(lightbulb.Plugin):
                 break        
         
         cur = await ctx.bot.db.execute(
-            "SELECT ChannelID, MessageID, DueDate "
+            "SELECT ChannelID, MessageID, DueDate, Notified "
             "FROM assignment_list "
             "WHERE MessageID = ?", (arg_messageid,)
         )
-        results = await cur.fetchall() # results[0][0] = ChannelID, results[0][1] = MessageID, results[0][2] = DueDate bcuz tuple
+        results = await cur.fetchall() # results[0][0] = ChannelID, results[0][1] = MessageID, results[0][2] = DueDate, results[0][3] = Notified bcuz tuple
+        print(f"results: {results}")
+        db_notified = results[0][3] #if deadline doesn't change, neither will the notified parameter (so no stupid dms are sent)
 
 
         #############setup date
-
-        if arg_date != None:
+        print(arg_date)
+        if arg_date != "":
             if arg_date == "today":
                 print("im here")
                 arg_date = datetime.date.today().strftime("%d.%m.%Y")
@@ -161,12 +163,11 @@ class Assupdate(lightbulb.Plugin):
             print(results)
             arg_date = f"{results[0][2][8:10]}.{results[0][2][5:7]}.{results[0][2][0:4]}"
         
-        print(arg_date)
+        
         #############setup time and datetime
 
         if arg_time == "": # set a default time argument
             arg_time = results[0][2][11:16]
-
         d_splitters = [".", "-", "/", ","]
         t_splitters = [".", "-", ":", ",", ";"]
         for splitter in d_splitters:
@@ -209,6 +210,7 @@ class Assupdate(lightbulb.Plugin):
             col = 0x40b7ad
         elif arg_atype == "default":
             col = 0x000000
+            url = None
         elif arg_atype != "":
             msg = (
             "Invalid assignment type input! "
@@ -222,36 +224,88 @@ class Assupdate(lightbulb.Plugin):
 
         if arg_head == "default":
             arg_head = "Assignment"
+
+        #############finds the channel in which the message is supposed to be based on weekday.
+
+        defchannel = await ctx.bot.rest.fetch_channel(ctx.message.channel_id)
+        cur = await ctx.bot.db.execute(
+            "SELECT * FROM channel_list "
+            "WHERE guildID = ?",
+            (ctx.message.guild_id,)
+        )
+        weekday_channels_raw = await cur.fetchall()
         
-        ##########################################Before enabling code below, make sure the command can update existing embeds
+        weekday_channels = []
+        for val in weekday_channels_raw[0]:
+            try:
+                weekday_channels.append(int(val))
+            except TypeError:
+                weekday_channels.append(defchannel.id)
 
-        # #############setup channel 
-
-        # defchannel = await ctx.bot.rest.fetch_channel(ctx.message.channel_id)
-        # cur = await ctx.bot.db.execute(
-        #     "SELECT * FROM channel_list "
-        #     "WHERE guildID = ?",
-        #     (ctx.message.guild_id,)
-        # )
-        # weekday_channels_raw = await cur.fetchall()
-        # #print(weekday_channels_raw)
+        correct_channelID = weekday_channels[deadline_datetime.weekday()+1] #channelID where message should be
         
-        # weekday_channels = []
-        # for val in weekday_channels_raw[0]:
-        #     try:
-        #         weekday_channels.append(int(val))
-        #     except TypeError:
-        #         weekday_channels.append(defchannel.id)
+        
+        msg = await ctx.bot.rest.fetch_message(results[0][0], results[0][1])
+        embed = msg.embeds[0]
+        embed.edit_field(0, "Due date: ", deadline_datetime.strftime("%d.%m.%Y %H:%M"))
+        if arg_atype != "":
+            embed.set_thumbnail(url)
+            embed.color = col
+        if arg_head != "":
+            embed.title = arg_head
+        if arg_details != "":
+            embed.description = arg_details
 
-        # channel = await ctx.bot.rest.fetch_channel(weekday_channels[deadline_datetime.weekday()+1])
+        #############either updates existing message, or deletes and sends a new one.
 
-        # cur = await ctx.bot.db.execute(
-        #     "SELECT * FROM emoji_list "
-        #     "WHERE guildID = ?",
-        #     (ctx.message.guild_id,)
-        # )
-        # emoji_raw = await cur.fetchall()
-        # print(arg_head)
+        if correct_channelID == results[0][0]:
+            await msg.edit(embed)
+            db_messageID = msg.id
+        else:
+            correct_channel = await ctx.bot.rest.fetch_channel(correct_channelID) 
+            asgembed = await correct_channel.send(embed)
+
+            cur = await ctx.bot.db.execute(
+                "SELECT * FROM emoji_list "
+                "WHERE guildID = ?",
+                (ctx.message.guild_id,)
+            )
+            emoji_raw = await cur.fetchall()
+            try:
+                await asgembed.add_reaction(emoji_raw[0][1], int(emoji_raw[0][2]))
+            except TypeError:
+                await asgembed.add_reaction("✅")
+
+            try:
+                await asgembed.add_reaction(emoji_raw[0][3], int(emoji_raw[0][4]))
+            except TypeError:
+                await asgembed.add_reaction("❌")
+            db_messageID = asgembed.id
+            await ctx.bot.rest.delete_message(results[0][0], results[0][1])
+
+        #############update database with new info
+
+        if deadline_datetime.isoformat(" ") != results[0][2]:
+            db_notified = 0 #deadline changes, so users will be notified.
+
+        await ctx.bot.db.execute(
+            "UPDATE assignment_list "
+            "SET ChannelID = ?, MessageID = ?, details = ?, DueDate = ?, Notified = ? "
+            "WHERE MessageID = ?",
+            (
+                correct_channelID,
+                db_messageID,
+                embed.description,
+                deadline_datetime.isoformat(" "),
+                db_notified,
+                results[0][1]
+            )
+        )
+        await ctx.bot.db.commit()
+
+        #delete user's message
+        await ctx.bot.rest.delete_message(ctx.message.channel_id, ctx.message)
+            
 
 
 def load(bot):

@@ -77,14 +77,19 @@ class React(lightbulb.Plugin):
 
         for result in results: 
             await bot.db.execute("UPDATE assignment_list SET Notified = 1 WHERE messageID = ?", (result[1],))
-            embed = (
-                hikari.Embed(
-                    title = "Assignment Reminder", 
-                    description = "fsaddfsasfdfsdfsd",
-                    colour = 0xFF0000,
-                )
-                .add_field("Due date: ", result[2])
-            )
+            
+            msg = await bot.rest.fetch_message(result[0], result[1])
+            embed = msg.embeds[0]
+            embed.title = f"Reminder: {embed.title} - due in less than 24 hours"
+
+            # embed = (
+            #     hikari.Embed(
+            #         title = "Assignment Reminder", 
+            #         description = "fsaddfsasfdfsdfsd",
+            #         colour = 0xFF0000,
+            #     )
+            #     .add_field("Due date: ", result[2])
+            # )
             #for users in bot.rest.fetch_reactions_for_emoji(results[1], results[2], ):
 
             # channel = bot.cache.get_guild_channel(result[0])
