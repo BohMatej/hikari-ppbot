@@ -305,7 +305,8 @@ class Assupdate(lightbulb.Plugin):
 
         #delete user's message
         await ctx.bot.rest.delete_message(ctx.message.channel_id, ctx.message)
-            
+
+    
 
 
 def load(bot):
