@@ -20,7 +20,7 @@ async def help(ctx: lightbulb.Context):
     embed1 = (
         hikari.Embed(
             title = "Maculamatej's hwbot - Help and information",
-            description = "A lightweight bot for organizing assignments for Discord servers",
+            description = "A lightweight bot for organizing assignments for Discord servers. Created by Matej Macula.",
         )
     ) 
     embed2 = (
